@@ -169,6 +169,8 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly
                             resourceList = new();
                             resourceData.extensions[extensionName] = resourceList;
                         }
+                        AddResourceToList(resource, resourceList, resource.GetMetadata("TargetPath"));
+                        continue;
                     }
                     else
                     {

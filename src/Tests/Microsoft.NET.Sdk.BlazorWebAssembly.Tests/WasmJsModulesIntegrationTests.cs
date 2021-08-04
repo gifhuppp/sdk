@@ -213,7 +213,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
                         new XElement("SourceType", "Computed"),
                         new XElement("ContentRoot", "$(PublishDir)wwwroot"),
                         new XElement("BasePath", "$(StaticWebAssetBasePath)"),
-                        new XElement("RelativePath", "_framework/publish.extension.txt"),
+                        new XElement("RelativePath", "_bin/publish.extension.txt"),
                         new XElement("AssetKind", "Publish"),
                         new XElement("AssetMode", "All"),
                         new XElement("AssetRole", "Primary"),
