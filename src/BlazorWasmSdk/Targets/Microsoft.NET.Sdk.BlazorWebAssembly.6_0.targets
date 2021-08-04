@@ -504,21 +504,22 @@ Copyright (c) .NET Foundation. All rights reserved.
       <_BlazorJsModuleCandidatesForPublish
         Include="@(StaticWebAsset)"
         Condition="'%(AssetTraitName)' == 'JSModule' and '%(AssetTraitValue)' == 'JSLibraryModule' and '%(AssetKind)' != 'Build'" />    
+
+      <_BlazorExtensionsCandidatesForPublish
+        Include="@(StaticWebAsset)"
+        Condition="'%(AssetTraitName)' == 'BlazorWebAssemblyResource' and '%(AssetKind)' != 'Build' and $([System.String]::Copy('%(AssetTraitValue)').StartsWith('extension:'))" />    
+
     </ItemGroup>
 
     <ComputeStaticWebAssetsTargetPaths 
-      Assets="@(_BlazorJsModuleCandidatesForPublish)"
+      Assets="@(_BlazorJsModuleCandidatesForPublish);@(_BlazorExtensionsCandidatesForPublish)"
       PathPrefix=""
       UseAlternatePathDirectorySeparator="true"
     >
-      <Output TaskParameter="AssetsWithTargetPath" ItemName="_BlazorJsModuleCandidatesForPublishWithTargetPath" />
+      <Output TaskParameter="AssetsWithTargetPath" ItemName="_BlazorCandidatesForPublishWithTargetPath" />
     </ComputeStaticWebAssetsTargetPaths>
 
-    <GetFileHash Files="@(_BlazorPublishAsset)" Algorithm="SHA256" HashEncoding="base64">
-      <Output TaskParameter="Items" ItemName="_BlazorPublishBootResourceWithHash" />
-    </GetFileHash>
-
-    <GetFileHash Files="@(_BlazorJsModuleCandidatesForPublishWithTargetPath)" Algorithm="SHA256" HashEncoding="base64">
+    <GetFileHash Files="@(_BlazorPublishAsset);@(_BlazorCandidatesForPublishWithTargetPath)" Algorithm="SHA256" HashEncoding="base64">
       <Output TaskParameter="Items" ItemName="_BlazorPublishBootResourceWithHash" />
     </GetFileHash>
 

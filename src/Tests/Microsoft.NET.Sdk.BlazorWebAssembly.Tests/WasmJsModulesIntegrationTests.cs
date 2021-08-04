@@ -255,7 +255,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
             var wwwrootPublishExtension = GetPublishExtension(Path.Combine(outputPath, "wwwroot", "_framework", "blazor.boot.json"));
             publishExtension.GetString().Should().Be(wwwrootPublishExtension.GetString());
 
-            var extension = new FileInfo(Path.Combine(outputPath, "wwwroot", "_framework", "publish.extension.txt"));
+            var extension = new FileInfo(Path.Combine(outputPath, "wwwroot", "_bin", "publish.extension.txt"));
             extension.Should().Exist();
 
             AssertPublishAssets(
@@ -271,7 +271,7 @@ namespace Microsoft.NET.Sdk.BlazorWebAssembly.Tests
                 contents.RootElement.TryGetProperty("resources", out var resources).Should().BeTrue();
                 resources.TryGetProperty("extensions", out var extensions).Should().BeTrue();
                 extensions.TryGetProperty("my-custom-extension", out var extension).Should().BeTrue();
-                extension.TryGetProperty("publish.extension.txt", out var file).Should().BeTrue();
+                extension.TryGetProperty("_bin/publish.extension.txt", out var file).Should().BeTrue();
                 return file;
             }
         }
