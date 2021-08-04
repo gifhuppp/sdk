@@ -78,10 +78,20 @@ Copyright (c) .NET Foundation. All rights reserved.
       _AddBlazorWasmStaticWebAssets;
     </ResolveStaticWebAssetsInputsDependsOn>
 
+    <StaticWebAssetsPrepareForRunDependsOn>
+      _GenerateBuildBlazorBootJson;
+      $(StaticWebAssetsPrepareForRunDependsOn)
+    </StaticWebAssetsPrepareForRunDependsOn>    
+
     <ResolvePublishStaticWebAssetsDependsOn>
       $(ResolvePublishStaticWebAssetsDependsOn);
-      _GeneratePublishBlazorBootJson
+      _AddPublishBlazorBootJsonToStaticWebAssets;
     </ResolvePublishStaticWebAssetsDependsOn>
+
+    <GenerateStaticWebAssetsPublishManifestDependsOn>
+      $(GenerateStaticWebAssetsPublishManifestDependsOn);
+      GeneratePublishBlazorBootJson;
+    </GenerateStaticWebAssetsPublishManifestDependsOn>
 
   </PropertyGroup>
 
@@ -266,31 +276,13 @@ Copyright (c) .NET Foundation. All rights reserved.
       </_BlazorBuildGZipCompressedFile>
 
       <_BlazorGzipStaticWebAsset Include="@(_BlazorBuildGZipCompressedFile->'%(FullPath)')" />
-    </ItemGroup>
+      </ItemGroup>
 
     <PropertyGroup>
       <_BlazorBuildBootJsonPath>$(IntermediateOutputPath)blazor.boot.json</_BlazorBuildBootJsonPath>
-      <_BlazorWebAssemblyLoadAllGlobalizationData Condition="'$(BlazorWebAssemblyLoadAllGlobalizationData)' == ''">false</_BlazorWebAssemblyLoadAllGlobalizationData>
     </PropertyGroup>
 
-    <GetFileHash Files="@(_BlazorStaticWebAsset->'%(OriginalItemSpec)')" Algorithm="SHA256" HashEncoding="base64">
-      <Output TaskParameter="Items" ItemName="_BlazorOutputWithHash" />
-    </GetFileHash>
-
-    <GenerateBlazorWebAssemblyBootJson
-      AssemblyPath="@(IntermediateAssembly)"
-      Resources="@(_BlazorOutputWithHash)"
-      DebugBuild="true"
-      LinkerEnabled="false"
-      CacheBootResources="$(BlazorCacheBootResources)"
-      OutputPath="$(_BlazorBuildBootJsonPath)"
-      ConfigurationFiles="@(_BlazorJsConfigStaticWebAsset)"
-      LazyLoadedAssemblies="@(BlazorWebAssemblyLazyLoad)"
-      InvariantGlobalization="$(InvariantGlobalization)"
-      LoadAllICUData="$(_BlazorWebAssemblyLoadAllGlobalizationData)" />
-
     <ItemGroup>
-      <FileWrites Include="$(_BlazorBuildBootJsonPath)" />
       <_BuildBlazorBootJson 
         Include="$(_BlazorBuildBootJsonPath)"
         RelativePath="_framework/blazor.boot.json" />
@@ -320,6 +312,53 @@ Copyright (c) .NET Foundation. All rights reserved.
       <StaticWebAsset Include="@(_BlazorGzipStaticWebAsset)" />
       <StaticWebAsset Include="@(_BuildBlazorBootJsonStaticWebAsset)" />
     </ItemGroup>    
+
+  </Target>
+
+  <Target Name="_GenerateBuildBlazorBootJson" DependsOnTargets="ResolveStaticWebAssetsInputs">
+    <PropertyGroup>
+      <_BlazorBuildBootJsonPath>$(IntermediateOutputPath)blazor.boot.json</_BlazorBuildBootJsonPath>
+      <_BlazorWebAssemblyLoadAllGlobalizationData Condition="'$(BlazorWebAssemblyLoadAllGlobalizationData)' == ''">false</_BlazorWebAssemblyLoadAllGlobalizationData>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_BlazorJsModuleCandidatesForBuild
+        Include="@(StaticWebAsset)"
+        Condition="'%(AssetTraitName)' == 'JSModule' and '%(AssetTraitValue)' == 'JSLibraryModule' and '%(AssetKind)' != 'Publish'" />
+    </ItemGroup>
+
+    <GetFileHash Files="@(_BlazorStaticWebAsset->'%(OriginalItemSpec)')" Algorithm="SHA256" HashEncoding="base64">
+      <Output TaskParameter="Items" ItemName="_BlazorOutputWithHash" />
+    </GetFileHash>
+
+    <ComputeStaticWebAssetsTargetPaths 
+      Assets="@(_BlazorJsModuleCandidatesForBuild)"
+      PathPrefix=""
+      UseAlternatePathDirectorySeparator="true"
+    >
+      <Output TaskParameter="AssetsWithTargetPath" ItemName="_BlazorJsModuleCandidatesForBuildWithTargetPath" />
+    </ComputeStaticWebAssetsTargetPaths>
+
+    <GetFileHash Files="@(_BlazorJsModuleCandidatesForBuildWithTargetPath)" Algorithm="SHA256" HashEncoding="base64">
+      <Output TaskParameter="Items" ItemName="_BlazorOutputWithHash" />
+    </GetFileHash>
+
+
+    <GenerateBlazorWebAssemblyBootJson
+      AssemblyPath="@(IntermediateAssembly)"
+      Resources="@(_BlazorOutputWithHash)"
+      DebugBuild="true"
+      LinkerEnabled="false"
+      CacheBootResources="$(BlazorCacheBootResources)"
+      OutputPath="$(_BlazorBuildBootJsonPath)"
+      ConfigurationFiles="@(_BlazorJsConfigStaticWebAsset)"
+      LazyLoadedAssemblies="@(BlazorWebAssemblyLazyLoad)"
+      InvariantGlobalization="$(InvariantGlobalization)"
+      LoadAllICUData="$(_BlazorWebAssemblyLoadAllGlobalizationData)" />
+
+    <ItemGroup>
+      <FileWrites Include="$(_BlazorBuildBootJsonPath)" />
+    </ItemGroup>
 
   </Target>
 
@@ -368,7 +407,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     </ItemGroup>
   </Target>
 
-  <Target Name="_ProcessPublishFilesForBlazor" DependsOnTargets="LoadStaticWebAssetsBuildManifest" AfterTargets="ILLink">
+  <Target Name="ProcessPublishFilesForBlazor" DependsOnTargets="LoadStaticWebAssetsBuildManifest" AfterTargets="ILLink">
     
     <PropertyGroup>
       <!-- Workaround for https://github.com/dotnet/sdk/issues/12114-->
@@ -427,35 +466,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     </ItemGroup>
   </Target>
 
-  <Target Name="_GeneratePublishBlazorBootJson" DependsOnTargets="_ProcessPublishFilesForBlazor">
-
-    <ItemGroup>
-      <_BlazorPublishAsset 
-        Include="@(StaticWebAsset)" 
-        Condition="'%(AssetKind)' != 'Build' and ('%(AssetTraitName)' == 'BlazorWebAssemblyResource' or '%(AssetTraitName)' == 'Culture') and '%(RelativePath)' != '_framework/blazor.webassembly.js'" />
-
-      <_BlazorPublishConfigFile 
-        Include="@(StaticWebAsset)" 
-        Condition="'%(AssetTraitName)' == 'BlazorWebAssemblyResource' and '%(AssetTraitValue)' == 'settings'"/>
-    
-    </ItemGroup>
-
-    <GetFileHash Files="@(_BlazorPublishAsset)" Algorithm="SHA256" HashEncoding="base64">
-      <Output TaskParameter="Items" ItemName="_BlazorPublishBootResourceWithHash" />
-    </GetFileHash>
-
-    <GenerateBlazorWebAssemblyBootJson
-      AssemblyPath="@(IntermediateAssembly)"
-      Resources="@(_BlazorPublishBootResourceWithHash)"
-      DebugBuild="false"
-      LinkerEnabled="$(PublishTrimmed)"
-      CacheBootResources="$(BlazorCacheBootResources)"
-      OutputPath="$(IntermediateOutputPath)blazor.publish.boot.json"
-      ConfigurationFiles="@(_BlazorPublishConfigFile)"
-      LazyLoadedAssemblies="@(BlazorWebAssemblyLazyLoad)"
-      InvariantGlobalization="$(InvariantGlobalization)"
-      LoadAllICUData="$(_BlazorWebAssemblyLoadAllGlobalizationData)" />
-
+  <Target Name="_AddPublishBlazorBootJsonToStaticWebAssets">
     <ItemGroup>
       <_PublishBlazorBootJson
         Include="$(IntermediateOutputPath)blazor.publish.boot.json"
@@ -474,15 +485,64 @@ Copyright (c) .NET Foundation. All rights reserved.
       CopyToPublishDirectory="PreserveNewest"
       ContentRoot="$(PublishDir)wwwroot"
       BasePath="$(StaticWebAssetBasePath)"
-      >
-    <Output TaskParameter="Assets" ItemName="StaticWebAsset" />
-  </DefineStaticWebAssets>
+    >
+      <Output TaskParameter="Assets" ItemName="StaticWebAsset" />
+    </DefineStaticWebAssets>
+  </Target>
+
+  <Target Name="GeneratePublishBlazorBootJson">
+
+    <ItemGroup>
+      <_BlazorPublishAsset 
+        Include="@(StaticWebAsset)" 
+        Condition="'%(AssetKind)' != 'Build' and '%(AssetTraitValue)' != 'manifest' and ('%(AssetTraitName)' == 'BlazorWebAssemblyResource' or '%(AssetTraitName)' == 'Culture') and '%(AssetTraitValue)' != 'boot'" />
+
+      <_BlazorPublishConfigFile 
+        Include="@(StaticWebAsset)" 
+        Condition="'%(AssetTraitName)' == 'BlazorWebAssemblyResource' and '%(AssetTraitValue)' == 'settings'"/>
+
+      <_BlazorJsModuleCandidatesForPublish
+        Include="@(StaticWebAsset)"
+        Condition="'%(AssetTraitName)' == 'JSModule' and '%(AssetTraitValue)' == 'JSLibraryModule' and '%(AssetKind)' != 'Build'" />    
+    </ItemGroup>
+
+    <ComputeStaticWebAssetsTargetPaths 
+      Assets="@(_BlazorJsModuleCandidatesForPublish)"
+      PathPrefix=""
+      UseAlternatePathDirectorySeparator="true"
+    >
+      <Output TaskParameter="AssetsWithTargetPath" ItemName="_BlazorJsModuleCandidatesForPublishWithTargetPath" />
+    </ComputeStaticWebAssetsTargetPaths>
+
+    <GetFileHash Files="@(_BlazorPublishAsset)" Algorithm="SHA256" HashEncoding="base64">
+      <Output TaskParameter="Items" ItemName="_BlazorPublishBootResourceWithHash" />
+    </GetFileHash>
+
+    <GetFileHash Files="@(_BlazorJsModuleCandidatesForPublishWithTargetPath)" Algorithm="SHA256" HashEncoding="base64">
+      <Output TaskParameter="Items" ItemName="_BlazorPublishBootResourceWithHash" />
+    </GetFileHash>
+
+    <GenerateBlazorWebAssemblyBootJson
+      AssemblyPath="@(IntermediateAssembly)"
+      Resources="@(_BlazorPublishBootResourceWithHash)"
+      DebugBuild="false"
+      LinkerEnabled="$(PublishTrimmed)"
+      CacheBootResources="$(BlazorCacheBootResources)"
+      OutputPath="$(IntermediateOutputPath)blazor.publish.boot.json"
+      ConfigurationFiles="@(_BlazorPublishConfigFile)"
+      LazyLoadedAssemblies="@(BlazorWebAssemblyLazyLoad)"
+      InvariantGlobalization="$(InvariantGlobalization)"
+      LoadAllICUData="$(_BlazorWebAssemblyLoadAllGlobalizationData)" />
+
+    <ItemGroup>
+      <FileWrites Include="$(IntermediateOutputPath)blazor.publish.boot.json" />
+    </ItemGroup>
 
   </Target>
 
   <Target Name="_BlazorWasmNative"
       DependsOnTargets="_EnsureWasmRuntimeWorkload;_GatherWasmFilesToBuild;WasmBuildApp"
-      BeforeTargets="_ProcessPublishFilesForBlazor"
+      BeforeTargets="ProcessPublishFilesForBlazor"
       Condition="'$(UsingBrowserRuntimeWorkload)' == 'true'" />
 
   <Target Name="_EnsureWasmRuntimeWorkload" Condition="'$(UsingBlazorAOTWorkloadManifest)' != 'true'">
@@ -497,7 +557,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     </ItemGroup>
   </Target>
 
-  <Target Name="_BlazorCompressPublishFiles" AfterTargets="_GeneratePublishBlazorBootJson" Condition="'$(BlazorEnableCompression)' != 'false'">
+  <Target Name="_BlazorCompressPublishFiles" AfterTargets="GeneratePublishBlazorBootJson" Condition="'$(BlazorEnableCompression)' != 'false'">
     <PropertyGroup>
       <_CompressedFileOutputPath>$(IntermediateOutputPath)compress\</_CompressedFileOutputPath>
       <_BlazorWebAssemblyBrotliIncremental>true</_BlazorWebAssemblyBrotliIncremental>
