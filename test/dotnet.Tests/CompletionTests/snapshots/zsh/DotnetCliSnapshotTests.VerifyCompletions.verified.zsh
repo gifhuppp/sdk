@@ -121,7 +121,7 @@ _testhost() {
                         '--disable-build-servers[Force the command to ignore any persistent build servers.]' \
                         '--help[Show command line help.]' \
                         '-h[Show command line help.]' \
-                        '*::PROJECT | SOLUTION -- The project or solution file to operate on. If a file is not specified, the command will search the current directory for one.: ' \
+                        '*::PROJECT | SOLUTION | FILE -- The project or solution or C# (file-based program) file to operate on. If a file is not specified, the command will search the current directory for a project or solution.: ' \
                         && ret=0
                         case $state in
                             (dotnet_dynamic_complete)
@@ -536,6 +536,8 @@ _testhost() {
                         '--disable-build-servers[Force the command to ignore any persistent build servers.]' \
                         '--use-current-runtime[Use current runtime as the target runtime.]' \
                         '--ucr[Use current runtime as the target runtime.]' \
+                        '--runtime=[The target runtime to build for.]:RUNTIME_IDENTIFIER:->dotnet_dynamic_complete' \
+                        '-r=[The target runtime to build for.]:RUNTIME_IDENTIFIER:->dotnet_dynamic_complete' \
                         '--help[Show command line help.]' \
                         '-h[Show command line help.]' \
                         '*::PROJECT | SOLUTION -- The project or solution file to operate on. If a file is not specified, the command will search the current directory for one.: ' \
@@ -644,6 +646,14 @@ _testhost() {
                                             '*::PACKAGE_NAME -- The package reference to remove.: ' \
                                             && ret=0
                                         ;;
+                                    (update)
+                                        _arguments "${_arguments_options[@]}" : \
+                                            '--project=[Path to a project or solution file, or a directory.]: : ' \
+                                            '--help[Show command line help.]' \
+                                            '-h[Show command line help.]' \
+                                            '*::packages -- Package reference in the form of a package identifier like '\''Newtonsoft.Json'\'' or package identifier and version separated by '\''@'\'' like '\''Newtonsoft.Json@13.0.3'\''.: ' \
+                                            && ret=0
+                                        ;;
                                 esac
                             ;;
                         esac
@@ -705,7 +715,7 @@ _testhost() {
                         '--disable-build-servers[Force the command to ignore any persistent build servers.]' \
                         '--help[Show command line help.]' \
                         '-h[Show command line help.]' \
-                        '*::PROJECT | SOLUTION -- The project or solution file to operate on. If a file is not specified, the command will search the current directory for one.: ' \
+                        '*::PROJECT | SOLUTION | FILE -- The project or solution or C# (file-based program) file to operate on. If a file is not specified, the command will search the current directory for a project or solution.: ' \
                         && ret=0
                         case $state in
                             (dotnet_dynamic_complete)
@@ -811,6 +821,7 @@ _testhost() {
                         '--force-evaluate[Forces restore to reevaluate all dependencies even if a lock file already exists.]' \
                         '--arch=[The target architecture.]:ARCH: ' \
                         '-a=[The target architecture.]:ARCH: ' \
+                        '--os=[The target operating system.]:OS: ' \
                         '--help[Show command line help.]' \
                         '-h[Show command line help.]' \
                         '*::PROJECT | SOLUTION | FILE -- The project or solution or C# (file-based program) file to operate on. If a file is not specified, the command will search the current directory for a project or solution.: ' \
@@ -834,9 +845,9 @@ _testhost() {
                         '-f=[The target framework to run for. The target framework must also be specified in the project file.]:FRAMEWORK:->dotnet_dynamic_complete' \
                         '--runtime=[The target runtime to run for.]:RUNTIME_IDENTIFIER:->dotnet_dynamic_complete' \
                         '-r=[The target runtime to run for.]:RUNTIME_IDENTIFIER:->dotnet_dynamic_complete' \
-                        '--project=[The path to the project file to run (defaults to the current directory if there is only one project).]: : ' \
-                        '--launch-profile=[The name of the launch profile (if any) to use when launching the application.]: : ' \
-                        '-lp=[The name of the launch profile (if any) to use when launching the application.]: : ' \
+                        '--project=[The path to the project file to run (defaults to the current directory if there is only one project).]:PROJECT_PATH: ' \
+                        '--launch-profile=[The name of the launch profile (if any) to use when launching the application.]:LAUNCH_PROFILE: ' \
+                        '-lp=[The name of the launch profile (if any) to use when launching the application.]:LAUNCH_PROFILE: ' \
                         '--no-launch-profile[Do not attempt to use launchSettings.json to configure the application.]' \
                         '--no-build[Do not build the project before running. Implies --no-restore.]' \
                         '--interactive=[Allows the command to stop and wait for user input or action (for example to complete authentication).]: :((False\:"False" True\:"True" ))' \
@@ -1044,7 +1055,7 @@ _testhost() {
                                             '-v=[Set the MSBuild verbosity level. Allowed values are q\[uiet\], m\[inimal\], n\[ormal\], d\[etailed\], and diag\[nostic\].]:LEVEL:((d\:"d" detailed\:"detailed" diag\:"diag" diagnostic\:"diagnostic" m\:"m" minimal\:"minimal" n\:"n" normal\:"normal" q\:"q" quiet\:"quiet" ))' \
                                             '--arch=[The target architecture.]: : ' \
                                             '-a=[The target architecture.]: : ' \
-                                            '--create-manifest-if-needed[Create a tool manifest if one isn'\''t found during tool installation. For information on how manifests are located, see https\://aka.ms/dotnet/tools/create-manifest-if-needed]' \
+                                            '--create-manifest-if-needed=[Create a tool manifest if one isn'\''t found during tool installation. For information on how manifests are located, see https\://aka.ms/dotnet/tools/create-manifest-if-needed]: :((False\:"False" True\:"True" ))' \
                                             '--allow-downgrade[Allow package downgrade when installing a .NET tool package.]' \
                                             '--allow-roll-forward[Allow a .NET tool to roll forward to newer versions of the .NET runtime if the runtime it targets isn'\''t installed.]' \
                                             '--help[Show command line help.]' \
@@ -1128,7 +1139,7 @@ _testhost() {
                                             '--help[Show command line help.]' \
                                             '-h[Show command line help.]' \
                                             ':commandName -- The command name of the tool to run.: ' \
-                                            '*::toolArguments -- arguments forwarded to the tool: ' \
+                                            '*::toolArguments -- Arguments forwarded to the tool: ' \
                                             && ret=0
                                         ;;
                                     (search)
@@ -1156,6 +1167,38 @@ _testhost() {
                                             '--help[Show command line help.]' \
                                             '-h[Show command line help.]' \
                                             && ret=0
+                                        ;;
+                                    (execute)
+                                        _arguments "${_arguments_options[@]}" : \
+                                            '--version=[The version of the tool package to install.]:VERSION: ' \
+                                            '--yes[Accept all confirmation prompts using \"yes.\"]' \
+                                            '-y[Accept all confirmation prompts using \"yes.\"]' \
+                                            '--interactive[Allows the command to stop and wait for user input or action (for example to complete authentication).]' \
+                                            '--allow-roll-forward[Allow a .NET tool to roll forward to newer versions of the .NET runtime if the runtime it targets isn'\''t installed.]' \
+                                            '--prerelease[Include pre-release packages.]' \
+                                            '--configfile=[The NuGet configuration file to use.]:FILE: ' \
+                                            '*--source=[Replace all NuGet package sources to use during installation with these.]:SOURCE: ' \
+                                            '*--add-source=[Add an additional NuGet package source to use during installation.]:ADDSOURCE: ' \
+                                            '--disable-parallel[Prevent restoring multiple projects in parallel.]' \
+                                            '--ignore-failed-sources[Treat package source failures as warnings.]' \
+                                            '--no-http-cache[Do not cache packages and http requests.]' \
+                                            '--verbosity=[Set the MSBuild verbosity level. Allowed values are q\[uiet\], m\[inimal\], n\[ormal\], d\[etailed\], and diag\[nostic\].]:LEVEL:((d\:"d" detailed\:"detailed" diag\:"diag" diagnostic\:"diagnostic" m\:"m" minimal\:"minimal" n\:"n" normal\:"normal" q\:"q" quiet\:"quiet" ))' \
+                                            '-v=[Set the MSBuild verbosity level. Allowed values are q\[uiet\], m\[inimal\], n\[ormal\], d\[etailed\], and diag\[nostic\].]:LEVEL:((d\:"d" detailed\:"detailed" diag\:"diag" diagnostic\:"diagnostic" m\:"m" minimal\:"minimal" n\:"n" normal\:"normal" q\:"q" quiet\:"quiet" ))' \
+                                            '--help[Show command line help.]' \
+                                            '-h[Show command line help.]' \
+                                            ':packageId -- Package reference in the form of a package identifier like '\''Newtonsoft.Json'\'' or package identifier and version separated by '\''@'\'' like '\''Newtonsoft.Json@13.0.3'\''.:->dotnet_dynamic_complete' \
+                                            '*::commandArguments -- Arguments forwarded to the tool: ' \
+                                            && ret=0
+                                            case $state in
+                                                (dotnet_dynamic_complete)
+                                                    local completions=()
+                                                    local result=$(dotnet complete -- "${original_args[@]}")
+                                                    for line in ${(f)result}; do
+                                                        completions+=(${(q)line})
+                                                    done
+                                                    _describe 'completions' $completions && ret=0
+                                                ;;
+                                            esac
                                         ;;
                                 esac
                             ;;
@@ -1638,6 +1681,7 @@ _testhost__package_commands() {
         'add:Add a NuGet package reference to the project.' \
         'list:List all package references of the project or solution.' \
         'remove:Remove a NuGet package reference from the project.' \
+        'update:Update referenced packages in a project or solution.' \
     )
     _describe -t commands 'testhost package commands' commands "$@"
 }
@@ -1664,6 +1708,12 @@ _testhost__package__list_commands() {
 _testhost__package__remove_commands() {
     local commands; commands=()
     _describe -t commands 'testhost package remove commands' commands "$@"
+}
+
+(( $+functions[_testhost__package__update_commands] )) ||
+_testhost__package__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'testhost package update commands' commands "$@"
 }
 
 (( $+functions[_testhost__project_commands] )) ||
@@ -1783,6 +1833,7 @@ _testhost__tool_commands() {
         'run:Run a local tool. Note that this command cannot be used to run a global tool. ' \
         'search:Search dotnet tools in nuget.org' \
         'restore:Restore tools defined in the local tool manifest.' \
+        'execute:Executes a tool from source without permanently installing it.' \
     )
     _describe -t commands 'testhost tool commands' commands "$@"
 }
@@ -1827,6 +1878,12 @@ _testhost__tool__search_commands() {
 _testhost__tool__restore_commands() {
     local commands; commands=()
     _describe -t commands 'testhost tool restore commands' commands "$@"
+}
+
+(( $+functions[_testhost__tool__execute_commands] )) ||
+_testhost__tool__execute_commands() {
+    local commands; commands=()
+    _describe -t commands 'testhost tool execute commands' commands "$@"
 }
 
 (( $+functions[_testhost__vstest_commands] )) ||
@@ -1893,7 +1950,7 @@ _testhost__workload__list_commands() {
 (( $+functions[_testhost__workload__search_commands] )) ||
 _testhost__workload__search_commands() {
     local commands; commands=(
-        'version:'\''dotnet workload search version'\'' has three functions depending on its argument\:       1. If no argument is specified, it outputs a list of the latest released workload versions from this feature band. Takes the --take option to specify how many to provide and --format to alter the format.          Example\:            dotnet workload search version --take 2 --format json            \[{\"workloadVersion\"\:\"9.0.201\"},{\"workloadVersion\"\:\"9.0.200.1\"}\]       2. If a workload version is provided as an argument, it outputs a table of various workloads and their versions for the specified workload version. Takes the --format option to alter the output format.          Example\:            dotnet workload search version 9.0.201            Workload manifest ID                               Manifest feature band      Manifest Version            ------------------------------------------------------------------------------------------------            microsoft.net.workload.emscripten.current          9.0.100-rc.1               9.0.0-rc.1.24430.3            microsoft.net.workload.emscripten.net6             9.0.100-rc.1               9.0.0-rc.1.24430.3            microsoft.net.workload.emscripten.net7             9.0.100-rc.1               9.0.0-rc.1.24430.3            microsoft.net.workload.emscripten.net8             9.0.100-rc.1               9.0.0-rc.1.24430.3            microsoft.net.sdk.android                          9.0.100-rc.1               35.0.0-rc.1.80            microsoft.net.sdk.ios                              9.0.100-rc.1               17.5.9270-net9-rc1            microsoft.net.sdk.maccatalyst                      9.0.100-rc.1               17.5.9270-net9-rc1            microsoft.net.sdk.macos                            9.0.100-rc.1               14.5.9270-net9-rc1            microsoft.net.sdk.maui                             9.0.100-rc.1               9.0.0-rc.1.24453.9            microsoft.net.sdk.tvos                             9.0.100-rc.1               17.5.9270-net9-rc1            microsoft.net.workload.mono.toolchain.current      9.0.100-rc.1               9.0.0-rc.1.24431.7            microsoft.net.workload.mono.toolchain.net6         9.0.100-rc.1               9.0.0-rc.1.24431.7            microsoft.net.workload.mono.toolchain.net7         9.0.100-rc.1               9.0.0-rc.1.24431.7            microsoft.net.workload.mono.toolchain.net8         9.0.100-rc.1               9.0.0-rc.1.24431.7            microsoft.net.sdk.aspire                           8.0.100                    8.2.0       3. If one or more workloads are provided along with their versions (by joining them with the '\''@'\'' character), it outputs workload versions that match the provided versions. Takes the --take option to specify how many to provide and --format to alter the format.          Example\:            dotnet workload search version maui@9.0.0-rc.1.24453.9 ios@17.5.9270-net9-rc1            9.0.201     ' \
+        'version:'\''dotnet workload search version'\'' has three functions depending on its argument\:       1. If no argument is specified, it outputs a list of the latest released workload versions from this feature band. Takes the --take option to specify how many to provide and --format to alter the format.          Example\:            dotnet workload search version --take 2 --format json            \[{\"workloadVersion\"\:\"9.0.201\"},{\"workloadVersion\"\:\"9.0.200.1\"}\]       2. If a workload version is provided as an argument, it outputs a table of various workloads and their versions for the specified workload version. Takes the --format option to alter the output format.          Example\:            dotnet workload search version 9.0.201            Workload manifest ID                               Manifest feature band      Manifest Version            ------------------------------------------------------------------------------------------------            microsoft.net.workload.emscripten.current          9.0.100-rc.1               9.0.0-rc.1.24430.3            microsoft.net.workload.emscripten.net6             9.0.100-rc.1               9.0.0-rc.1.24430.3            microsoft.net.workload.emscripten.net7             9.0.100-rc.1               9.0.0-rc.1.24430.3            microsoft.net.workload.emscripten.net8             9.0.100-rc.1               9.0.0-rc.1.24430.3            microsoft.net.sdk.android                          9.0.100-rc.1               35.0.0-rc.1.80            microsoft.net.sdk.ios                              9.0.100-rc.1               17.5.9270-net9-rc1            microsoft.net.sdk.maccatalyst                      9.0.100-rc.1               17.5.9270-net9-rc1            microsoft.net.sdk.macos                            9.0.100-rc.1               14.5.9270-net9-rc1            microsoft.net.sdk.maui                             9.0.100-rc.1               9.0.0-rc.1.24453.9            microsoft.net.sdk.tvos                             9.0.100-rc.1               17.5.9270-net9-rc1            microsoft.net.workload.mono.toolchain.current      9.0.100-rc.1               9.0.0-rc.1.24431.7            microsoft.net.workload.mono.toolchain.net6         9.0.100-rc.1               9.0.0-rc.1.24431.7            microsoft.net.workload.mono.toolchain.net7         9.0.100-rc.1               9.0.0-rc.1.24431.7            microsoft.net.workload.mono.toolchain.net8         9.0.100-rc.1               9.0.0-rc.1.24431.7       3. If one or more workloads are provided along with their versions (by joining them with the '\''@'\'' character), it outputs workload versions that match the provided versions. Takes the --take option to specify how many to provide and --format to alter the format.          Example\:            dotnet workload search version maui@9.0.0-rc.1.24453.9 ios@17.5.9270-net9-rc1            9.0.201     ' \
     )
     _describe -t commands 'testhost workload search commands' commands "$@"
 }
